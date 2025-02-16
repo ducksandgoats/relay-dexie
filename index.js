@@ -84,7 +84,7 @@ export default class Base {
     }
 
     async initUser(){
-        const useHeaders = await fetch(`${this._proto}//${this._id}`, {method: 'HEAD', headers: {'X-User': 'true', 'X-Buf': 'false'}})
+        const useHeaders = (await fetch(`${this._proto}//${this._id}`, {method: 'HEAD', headers: {'X-User': 'true', 'X-Buf': 'false'}})).headers
         const iden = useHeaders.has('X-Iden') ? useHeaders.get('X-Iden') : null
         if(iden){
             for(const table of this.db.tables){
