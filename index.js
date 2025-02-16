@@ -121,7 +121,7 @@ export default class Base {
     async handler(data, nick){
         try {
             if(this._debug){
-                console.log('Received Message: ', typeof(data), data)
+                console.log('Received Message: ', typeof(data), data, new TextDecoder().decode(data))
             }
 
             const datas = JSON.parse(data)
