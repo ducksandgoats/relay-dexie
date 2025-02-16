@@ -72,7 +72,7 @@ export default class Base {
             }, this._timer.redo)
         }
         this._save = setInterval(() => {
-            localStorage.setItem('save', Date.now())
+            localStorage.setItem('save', `${Date.now()}`)
         }, this._timer.save)
 
         this._piecing = new Map()
