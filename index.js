@@ -3,7 +3,6 @@ import "dexie-export-import"
 
 export default class Base {
     constructor(opts){
-        super()
         this._debug = opts.debug
 
         if(!opts.proto){
