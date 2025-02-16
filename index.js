@@ -9,7 +9,7 @@ export default class Base {
             throw new Error('must have proto')
         }
 
-        if(opts.proto !== 'msg:' || opts.proto !== 'topic:' || opts.proto !== 'pubsub:'){
+        if(opts.proto !== 'msg:' && opts.proto !== 'topic:' && opts.proto !== 'pubsub:'){
             throw new Error('proto must be msg:, topic:, or pubsub:')
         }
 
