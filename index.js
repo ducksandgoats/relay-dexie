@@ -107,10 +107,10 @@ export default class Base {
                     const s = await table.where('stamp').notEqual(0).last()
                     const e = await table.where('edit').notEqual(0).last()
                     if(s){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: s.stamp - 43200000, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
                     }
                     if(e){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: e.edit - 43200000, name: table.name, session: 'edit'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
                     }
                 } else {
                     continue
