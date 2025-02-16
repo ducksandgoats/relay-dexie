@@ -39,7 +39,7 @@ export default class Base {
         this._user = localStorage.getItem('user') || (() => {const test = crypto.randomUUID();localStorage.setItem('user', test);return test;})()
     
         opts.own = typeof(opts.own) === 'object' && !Array.isArray(opts.own) ? opts.own : {}
-        this.checkForOwnTables = opts.own.keys()
+        this.checkForOwnTables = Object.keys(opts.own)
         for(const records in opts.schema){
             const record = opts.schema[records].split(',').map((data) => {return data.replaceAll(' ', '')})
             if(!record.includes('stamp')){
