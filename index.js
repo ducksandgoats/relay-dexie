@@ -80,7 +80,7 @@ export default class Base {
             for await (const i of (await fetch(`${this._proto}//${this._id}/`, {method: 'GET'})).body){
                 await this.handler(i)
             }
-        })().then(console.log).catch(console.error);
+        })().then((data) => {console.log(data)}).catch((err) => {console.error(err.name, err.message, err.stack)});
     }
 
     async initUser(){
