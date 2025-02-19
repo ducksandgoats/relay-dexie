@@ -124,7 +124,7 @@ export default class Base {
                 console.log('Received Message: ', typeof(data), data, new TextDecoder().decode(data))
             }
 
-            const datas = JSON.parse(data)
+            const datas = JSON.parse(new TextDecoder().decode(data))
 
             const dataTab = this.db.table(datas.name)
 
