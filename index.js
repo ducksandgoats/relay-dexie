@@ -420,13 +420,13 @@ export default class Base {
         const test = await dataTab.add(data)
         const useData = JSON.stringify({name, data, user: data.user, stamp: data.stamp, iden: test, status: 'add'})
         if(useData.length < 16000){
-            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify(useData)})
+            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: useData})
         } else {
             const pieces = Math.ceil(useData.length / 15000)
             let used = 0
             for(let i = 1;i < (pieces + 1);i++){
                 const slicing = i * 15000
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify({name, data: useData.slice(used, slicing), user: data.user, stamp: data.stamp, iden: test, piecing: 'add', pieces, pice: i})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify({name, data: useData.slice(used, slicing), user: data.user, stamp: data.stamp, iden: test, piecing: 'add', pieces, piece: i})})
                 used = slicing
             }
         }
@@ -441,7 +441,7 @@ export default class Base {
             const num = await dataTab.update(prop, data)
             const useData = JSON.stringify({name, data, iden: test.iden, user: test.user, edit: data.edit, num, status: 'edit'})
             if(useData.length < 16000){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify(useData)})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: useData})
             } else {
                 const pieces = Math.ceil(useData.length / 15000)
                 let used = 0
