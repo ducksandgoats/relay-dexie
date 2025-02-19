@@ -15,6 +15,8 @@ export default class Base {
 
         this._proto = opts.proto
 
+        this._ben = this._proto === 'msg:' ? 'json' : undefined
+
         if(!opts.id){
             throw new Error('must have id')
         }
@@ -92,24 +94,24 @@ export default class Base {
                     continue
                 }
                 if(this._sync === true){
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({name: table.name, session: 'stamp'})})
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({name: table.name, session: 'edit'})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({name: table.name, session: 'stamp'})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({name: table.name, session: 'edit'})})
                 } else if(this._sync === null){
                     if(this._span){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
                     } else {
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, 'X-Ben': this._ben, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
                     }
                 } else if(this._sync === false){
                     const s = await table.where('stamp').notEqual(0).last()
                     const e = await table.where('edit').notEqual(0).last()
                     if(s){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
                     }
                     if(e){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
                     }
                 } else {
                     continue
@@ -169,14 +171,14 @@ export default class Base {
                         datas.edits = null
                         const test = JSON.stringify(datas)
                         if(test.length < 16000){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick}, body: test})
+                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, 'X-Ben': this._ben}, body: test})
                         } else {
                             const useID = crypto.randomUUID()
                             const pieces = Math.ceil(test.length / 15000)
                             let used = 0
                             for(let i = 1;i < (pieces + 1);i++){
                                 const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick}, body: JSON.stringify({name: datas.name, piecing: 'stamps', pieces, piece: i, iden: useID, stamps: test.slice(used, slicing)})})
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, 'X-Ben': this._ben}, body: JSON.stringify({name: datas.name, piecing: 'stamps', pieces, piece: i, iden: useID, stamps: test.slice(used, slicing)})})
                                 used = slicing
                             }
                         }
@@ -227,14 +229,14 @@ export default class Base {
                         datas.edits = edits.splice(edits.length - count, count)
                         const test = JSON.stringify(datas)
                         if(test.length < 16000){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick}, body: test})
+                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, 'X-Ben': this._ben}, body: test})
                         } else {
                             const useID = crypto.randomUUID()
                             const pieces = Math.ceil(test.length / 15000)
                             let used = 0
                             for(let i = 1;i < (pieces + 1);i++){
                                 const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick}, body: JSON.stringify({name: datas.name, piecing: 'edits', pieces, piece: i, iden: useID, edits: test.slice(used, slicing)})})
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, 'X-Ben': this._ben}, body: JSON.stringify({name: datas.name, piecing: 'edits', pieces, piece: i, iden: useID, edits: test.slice(used, slicing)})})
                                 used = slicing
                             }
                         }
@@ -424,13 +426,13 @@ export default class Base {
         const test = await dataTab.add(data)
         const useData = JSON.stringify({name, data, user: data.user, stamp: data.stamp, iden: test, status: 'add'})
         if(useData.length < 16000){
-            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: useData})
+            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Ben': this._ben}, body: useData})
         } else {
             const pieces = Math.ceil(useData.length / 15000)
             let used = 0
             for(let i = 1;i < (pieces + 1);i++){
                 const slicing = i * 15000
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify({name, data: useData.slice(used, slicing), user: data.user, stamp: data.stamp, iden: test, piecing: 'add', pieces, piece: i})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Ben': this._ben}, body: JSON.stringify({name, data: useData.slice(used, slicing), user: data.user, stamp: data.stamp, iden: test, piecing: 'add', pieces, piece: i})})
                 used = slicing
             }
         }
@@ -445,13 +447,13 @@ export default class Base {
             const num = await dataTab.update(prop, data)
             const useData = JSON.stringify({name, data, iden: test.iden, user: test.user, edit: data.edit, num, status: 'edit'})
             if(useData.length < 16000){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: useData})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Ben': this._ben}, body: useData})
             } else {
                 const pieces = Math.ceil(useData.length / 15000)
                 let used = 0
                 for(let i = 1;i < (pieces + 1);i++){
                     const slicing = i * 15000
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {}, body: JSON.stringify({name, data: useData.slice(used, slicing), iden: test.iden, user: test.user, edit: data.edit, num, piecing: 'edit', pieces, piece: i})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Ben': this._ben}, body: JSON.stringify({name, data: useData.slice(used, slicing), iden: test.iden, user: test.user, edit: data.edit, num, piecing: 'edit', pieces, piece: i})})
                     used = slicing
                 }
             }
@@ -470,13 +472,13 @@ export default class Base {
         if(this._force){
             await dataTab.delete(test.iden)
             if(test.user === this._user){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
             }
             return test.iden
         } else {
             if(test.user === this._user){
                 await dataTab.delete(test.iden)
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
                 return test.iden
             } else {
                 throw new Error('user does not match')
@@ -497,7 +499,7 @@ export default class Base {
         const dataTab = this.db.table(name)
         data.name = dataTab.name
         data.session = session
-        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, body: JSON.stringify(data)})
+        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify(data)})
     }
 
     async getDB(blob, opts){
