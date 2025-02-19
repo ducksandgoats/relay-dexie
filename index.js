@@ -126,6 +126,10 @@ export default class Base {
 
             const datas = JSON.parse(new TextDecoder().decode(data))
 
+            if(this._debug){
+                console.log(datas)
+            }
+
             const dataTab = this.db.table(datas.name)
 
             if(datas.status){
