@@ -1,4 +1,5 @@
 import {Dexie} from 'dexie'
+import {arr2text} from 'uint8-util'
 import "dexie-export-import"
 
 export default class Base {
@@ -15,7 +16,7 @@ export default class Base {
 
         this._proto = opts.proto
 
-        this._ben = this._proto === 'msg:' ? 'json' : undefined
+        this._ben = this._proto === 'msg:' ? opts.ben ? opts.ben : undefined : undefined
 
         if(!opts.id){
             throw new Error('must have id')
@@ -123,10 +124,10 @@ export default class Base {
     async handler(data, nick){
         try {
             if(this._debug){
-                console.log('Received Message: ', typeof(data), data, new TextDecoder().decode(data))
+                console.log('Received Message: ', typeof(data), data, arr2text(data))
             }
 
-            const datas = JSON.parse(new TextDecoder().decode(data))
+            const datas = JSON.parse(arr2text(data))
 
             if(this._debug){
                 console.log(datas)
