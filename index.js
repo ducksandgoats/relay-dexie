@@ -103,7 +103,7 @@ export default class Base {
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
                     } else {
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden}, 'X-Ben': this._ben, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, 'X-Ben': this._ben}, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
                     }
                 } else if(this._sync === false){
                     const s = await table.where('stamp').notEqual(0).last()
@@ -425,7 +425,7 @@ export default class Base {
         data.iden = data.iden || crypto.randomUUID()
         data.edit = 0
         const test = await dataTab.add(data)
-        const useData = JSON.stringify({name, data, user: data.user, stamp: data.stamp, iden: test, status: 'add'})
+        const useData = JSON.stringify({name, user: data.user, stamp: data.stamp, iden: test, status: 'add', data})
         if(useData.length < 16000){
             await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Ben': this._ben}, body: useData})
         } else {
