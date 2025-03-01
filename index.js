@@ -127,7 +127,7 @@ export default class Base {
                 console.log('Received Message: ', typeof(data), data, arr2text(data))
             }
 
-            const datas = JSON.parse(arr2text(data))
+            const {data: datas} = JSON.parse(arr2text(data))
 
             if(this._debug){
                 console.log(datas)
