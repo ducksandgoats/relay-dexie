@@ -16,7 +16,7 @@ export default class Base {
 
         this._proto = opts.proto
 
-        this._ben = this._proto === 'msg:' ? opts.ben ? opts.ben : undefined : undefined
+        this._ben = this._proto === 'msg:' ? opts.ben && ['str', 'json', 'buf'].includes(opts.ben) ? opts.ben : undefined : undefined
 
         if(!opts.id){
             throw new Error('must have id')
