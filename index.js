@@ -177,7 +177,7 @@ export default class Base {
                         stamps = await dataTab.where('stamp').notEqual(0).toArray()
                     }
                     if(this._debug){
-                        console.log('stamps', stamps)
+                        console.log('run stamps', stamps)
                     }
                     const count = datas.count || 15
                     while(stamps.length){
@@ -200,6 +200,9 @@ export default class Base {
                         }
                     }
                 } else if(datas.session === 'stamps'){
+                    if(this._debug){
+                        console.log('see stamps', datas.stamps)
+                    }
                     if(!datas.stamps.length){
                         return
                     }
@@ -242,7 +245,7 @@ export default class Base {
                         edits = await dataTab.where('edit').notEqual(0).toArray()
                     }
                     if(this._debug){
-                        console.log('run edit')
+                        console.log('run edits', edits)
                     }
                     const count = datas.count || 15
                     while(edits.length){
@@ -267,6 +270,9 @@ export default class Base {
                         }
                     }
                 } else if(datas.session === 'edits'){
+                    if(this._debug){
+                        console.log('see edits', datas.edits)
+                    }
                     if(!datas.edits.length){
                         return
                     }
