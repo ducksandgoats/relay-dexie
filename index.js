@@ -125,11 +125,14 @@ export default class Base {
 
     async handler(data, nick){
         try {
+
+            const arrText = arr2text(data)
+
             if(this._debug){
-                console.log('Received Message: ', typeof(data), data, arr2text(data))
+                console.log('Received Message: ', typeof(data), data, arrText)
             }
 
-            const {data: datas} = JSON.parse(arr2text(data))
+            const {data: datas} = JSON.parse(arrText)
 
             if(this._debug){
                 console.log(datas)
@@ -153,7 +156,13 @@ export default class Base {
                     return
                 }
             } else if(datas.session){
+                if(this._debug){
+                    console.log('run session')
+                }
                 if(datas.session === 'stamp'){
+                    if(this._debug){
+                        console.log('run stamp')
+                    }
                     let stamps
                     if(datas.between){
                         if(!datas.includes){
@@ -167,8 +176,12 @@ export default class Base {
                     } else {
                         stamps = await dataTab.where('stamp').notEqual(0).toArray()
                     }
+                    if(this._debug){
+                        console.log('stamps', stamps)
+                    }
                     const count = datas.count || 15
                     while(stamps.length){
+                        console.log('split stamps', stamps.length)
                         datas.session = 'stamps'
                         datas.stamps = stamps.splice(stamps.length - count, count)
                         datas.edits = null
@@ -212,6 +225,9 @@ export default class Base {
                         }
                     }
                 } else if(datas.session === 'edit'){
+                    if(this._debug){
+                        console.log('run edit')
+                    }
                     let edits
                     if(datas.between){
                         if(!datas.includes){
@@ -225,8 +241,14 @@ export default class Base {
                     } else {
                         edits = await dataTab.where('edit').notEqual(0).toArray()
                     }
+                    if(this._debug){
+                        console.log('run edit')
+                    }
                     const count = datas.count || 15
                     while(edits.length){
+                        if(this._debug){
+                            console.log('split edit', edits.length)
+                        }
                         datas.session = 'edits'
                         datas.stamps = null
                         datas.edits = edits.splice(edits.length - count, count)
