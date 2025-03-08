@@ -185,6 +185,7 @@ export default class Base {
                         datas.session = 'stamps'
                         datas.stamps = stamps.splice(stamps.length - count, count)
                         datas.edits = null
+                        console.log('datas stamps', datas)
                         const test = JSON.stringify(datas)
                         if(test.length < 16000){
                             await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
@@ -255,6 +256,7 @@ export default class Base {
                         datas.session = 'edits'
                         datas.stamps = null
                         datas.edits = edits.splice(edits.length - count, count)
+                        console.log('datas edits', datas)
                         const test = JSON.stringify(datas)
                         if(test.length < 16000){
                             await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
