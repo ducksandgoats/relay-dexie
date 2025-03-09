@@ -14,6 +14,8 @@ export default class Base {
             throw new Error('proto must be msg:, topic:, or pubsub:')
         }
 
+        opts.routine = opts.routine !== false ? true : false
+
         this._proto = opts.proto
 
         this._ben = this._proto === 'msg:' ? opts.ben && ['str', 'json', 'buf'].includes(opts.ben) ? opts.ben : undefined : undefined
@@ -23,6 +25,8 @@ export default class Base {
         if(!opts.id){
             throw new Error('must have id')
         }
+
+        this._users = []
 
         this._id = opts.id
 
@@ -37,9 +41,10 @@ export default class Base {
         this._keep = opts.keep === true ? opts.keep : false
 
         this._timer = typeof(opts.timer) === 'object' && !Array.isArray(opts.timer) ? opts.timer : {}
-        this._timer.redo = this._timer.redo || 180000
+        this._timer.redo = this._timer.redo || 900000
         this._timer.expire = this._timer.expire || 300000
         this._timer.save = this._timer.save || 60000
+        this._timer.init = this._timer.init || 15000
     
         this._user = localStorage.getItem('user') || (() => {const test = crypto.randomUUID();localStorage.setItem('user', test);return test;})()
     
@@ -72,15 +77,14 @@ export default class Base {
         this.db.version(opts.version).stores({...opts.own, ...opts.schema})
 
         if(opts.routine){
-            this._routine = setInterval(() => {
-                this.initUser().then(console.log).catch(console.error)
-            }, this._timer.redo)
+            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.redo)
         }
-        this._save = setInterval(() => {
-            localStorage.setItem('save', `${Date.now()}`)
-        }, this._timer.save)
+        this._save = setInterval(() => {localStorage.setItem('save', `${Date.now()}`)}, this._timer.save)
 
         this._piecing = new Map()
+
+        setTimeout(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.init)
+
         ;(async () => {
             for await (const i of (await fetch(`${this._proto}//${this._id}/`, {method: 'GET'})).body){
                 await this.handler(i)
@@ -89,9 +93,12 @@ export default class Base {
     }
 
     async initUser(){
-        const useHeaders = (await fetch(`${this._proto}//${this._id}`, {method: 'HEAD', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).headers
-        const iden = useHeaders.has('X-Iden') ? useHeaders.get('X-Iden') : null
+        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.includes(data)})
+        const iden = idens[Math.floor(Math.random() * idens.length)]
         if(iden){
+            if(!this._users.includes(iden)){
+                this._users.push(iden)
+            }
             for(const table of this.db.tables){
                 if(this.checkForOwnTables.includes(table.name)){
                     continue
