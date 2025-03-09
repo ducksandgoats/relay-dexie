@@ -123,7 +123,7 @@ export default class Base {
         }
     }
 
-    async handler(data, nick){
+    async handler(data){
         try {
 
             const arrText = arr2text(data)
@@ -132,7 +132,7 @@ export default class Base {
                 console.log('Received Message: ', typeof(data), data, arrText, `nick: ${nick} ${typeof(nick)}`)
             }
 
-            const {data: datas} = JSON.parse(arrText)
+            const {data: datas, nick} = JSON.parse(arrText)
 
             if(this._debug){
                 console.log(datas)
