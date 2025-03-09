@@ -129,7 +129,7 @@ export default class Base {
             const arrText = arr2text(data)
 
             if(this._debug){
-                console.log('Received Message: ', typeof(data), data, arrText, `nick: ${nick} ${typeof(nick)}`)
+                console.log('Received Message: ', typeof(data), data, arrText)
             }
 
             const {data: datas, nick} = JSON.parse(arrText)
