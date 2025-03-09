@@ -14,6 +14,8 @@ export default class Base {
             throw new Error('proto must be msg:, topic:, or pubsub:')
         }
 
+        opts.init = opts.init !== true ? false : true
+
         opts.routine = opts.routine !== false ? true : false
 
         this._proto = opts.proto
@@ -83,7 +85,9 @@ export default class Base {
 
         this._piecing = new Map()
 
-        setTimeout(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.init)
+        if(opts.init){
+            setTimeout(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.init)
+        }
 
         ;(async () => {
             for await (const i of (await fetch(`${this._proto}//${this._id}/`, {method: 'GET'})).body){
