@@ -16,7 +16,7 @@ export default class Base {
 
         opts.init = opts.init !== true ? false : true
 
-        opts.routine = opts.routine !== false ? true : false
+        opts.routine = opts.routine !== true ? false : true
 
         this._proto = opts.proto
 
@@ -29,6 +29,10 @@ export default class Base {
         }
 
         this._users = new Set()
+
+        this._comms = {iden: null, ms: 0}
+
+        this._used = null
 
         this._id = opts.id
 
@@ -43,9 +47,10 @@ export default class Base {
         this._keep = opts.keep === true ? opts.keep : false
 
         this._timer = typeof(opts.timer) === 'object' && !Array.isArray(opts.timer) ? opts.timer : {}
-        this._timer.redo = this._timer.redo || 300000
+        this._timer.redo = this._timer.redo || 60000
         this._timer.save = this._timer.save || 60000
         this._timer.init = this._timer.init || 15000
+        this._timer.timed = this._timer.timed || 30000
     
         this._user = localStorage.getItem('user') || (() => {const test = crypto.randomUUID();localStorage.setItem('user', test);return test;})()
     
@@ -97,16 +102,30 @@ export default class Base {
 
     async initUser(){
         const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.has(data)})
+        if(this._comms.iden && this._comms.ms){
+            if(Date.now() - this._comms.ms < this._timer.timed){
+                return
+            } else {
+                this._used = this._comms.iden
+                this._comms.iden = null
+                this._comms.ms = 0
+            }
+        }
         let check = true
         while(check){
             if(idens.length){
                 const i = Math.floor(Math.random() * idens.length)
                 const iden = idens[i]
-                if(this._users.has(iden)){
+                if(this._used === iden){
+                    idens.splice(i, 1)
+                } else if(this._users.has(iden)){
                     idens.splice(i, 1)
                 } else {
-                    this._users.add(iden)
+                    // this._users.set(iden, Date.now())
+                    // this._comms.iden = iden
+                    // this._comms.ms = Date.now()
                     idens.splice(i, 1)
+                    this._used = null
 
                     for(const table of this.db.tables){
                         if(this.checkForOwnTables.includes(table.name)){
@@ -202,6 +221,7 @@ export default class Base {
                         console.log('run stamps', stamps)
                     }
                     const count = datas.count || 15
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'start'}})
                     while(stamps.length){
                         datas.session = 'stamps'
                         datas.stamps = stamps.splice(stamps.length - count, count)
@@ -220,7 +240,11 @@ export default class Base {
                             }
                         }
                     }
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'stop'}})
                 } else if(datas.session === 'stamps'){
+                    this._comms.iden = nick
+                    this._comms.ms = Date.now()
+                    // this._users.set(nick, Date.now())
                     if(this._debug){
                         console.log('see stamps', datas.stamps)
                     }
@@ -269,6 +293,7 @@ export default class Base {
                         console.log('run edits', edits)
                     }
                     const count = datas.count || 15
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'start'}})
                     while(edits.length){
                         if(this._debug){
                             console.log('split edit', edits.length)
@@ -290,7 +315,11 @@ export default class Base {
                             }
                         }
                     }
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'stop'}})
                 } else if(datas.session === 'edits'){
+                    this._comms.iden = nick
+                    this._comms.ms = Date.now()
+                    // this._users.set(nick, Date.now())
                     if(this._debug){
                         console.log('see edits', datas.edits)
                     }
@@ -318,6 +347,13 @@ export default class Base {
                             }
                         }
                     }
+                } else if(datas.session === 'start'){
+                    this._comms.iden = nick
+                    this._comms.ms = Date.now()
+                } else if(datas.session === 'stop'){
+                    this._comms.iden = null
+                    this._comms.ms = 0
+                    this._users.add(nick)
                 } else {
                     return
                 }
