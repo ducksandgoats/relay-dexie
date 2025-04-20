@@ -43,8 +43,7 @@ export default class Base {
         this._keep = opts.keep === true ? opts.keep : false
 
         this._timer = typeof(opts.timer) === 'object' && !Array.isArray(opts.timer) ? opts.timer : {}
-        this._timer.redo = this._timer.redo || 900000
-        this._timer.expire = this._timer.expire || 300000
+        this._timer.redo = this._timer.redo || 300000
         this._timer.save = this._timer.save || 60000
         this._timer.init = this._timer.init || 15000
     
