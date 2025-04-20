@@ -28,7 +28,7 @@ export default class Base {
             throw new Error('must have id')
         }
 
-        this._users = []
+        this._users = new Set()
 
         this._id = opts.id
 
@@ -97,39 +97,51 @@ export default class Base {
     }
 
     async initUser(){
-        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.includes(data)})
-        const iden = idens[Math.floor(Math.random() * idens.length)]
-        if(iden){
-            if(!this._users.includes(iden)){
-                this._users.push(iden)
-            }
-            for(const table of this.db.tables){
-                if(this.checkForOwnTables.includes(table.name)){
-                    continue
-                }
-                if(this._sync === true){
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp'})})
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit'})})
-                } else if(this._sync === null){
-                    if(this._span){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
-                    } else {
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
-                    }
-                } else if(this._sync === false){
-                    const s = await table.where('stamp').notEqual(0).last()
-                    const e = await table.where('edit').notEqual(0).last()
-                    if(s){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
-                    }
-                    if(e){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
-                    }
+        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.has(data)})
+        let check = true
+        while(check){
+            if(idens.length){
+                const i = Math.floor(Math.random() * idens.length)
+                const iden = idens[i]
+                if(this._users.has(iden)){
+                    idens.splice(i, 1)
                 } else {
-                    continue
+                    this._users.add(iden)
+                    idens.splice(i, 1)
+
+                    for(const table of this.db.tables){
+                        if(this.checkForOwnTables.includes(table.name)){
+                            continue
+                        }
+                        if(this._sync === true){
+                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp'})})
+                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit'})})
+                        } else if(this._sync === null){
+                            if(this._span){
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'stamp'})})
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
+                            } else {
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
+                            }
+                        } else if(this._sync === false){
+                            const s = await table.where('stamp').notEqual(0).last()
+                            const e = await table.where('edit').notEqual(0).last()
+                            if(s){
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
+                            }
+                            if(e){
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
+                            }
+                        } else {
+                            continue
+                        }
+                    }
+
+                    check = false
                 }
+            } else {
+                check = false
             }
         }
     }
