@@ -221,7 +221,7 @@ export default class Base {
                         console.log('run stamps', stamps)
                     }
                     const count = datas.count || 15
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'start'}})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     while(stamps.length){
                         datas.session = 'stamps'
                         datas.stamps = stamps.splice(stamps.length - count, count)
@@ -240,7 +240,7 @@ export default class Base {
                             }
                         }
                     }
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'stop'}})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
                 } else if(datas.session === 'stamps'){
                     this._comms.iden = nick
                     this._comms.ms = Date.now()
@@ -293,7 +293,7 @@ export default class Base {
                         console.log('run edits', edits)
                     }
                     const count = datas.count || 15
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'start'}})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     while(edits.length){
                         if(this._debug){
                             console.log('split edit', edits.length)
@@ -315,7 +315,7 @@ export default class Base {
                             }
                         }
                     }
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: {session: 'stop'}})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
                 } else if(datas.session === 'edits'){
                     this._comms.iden = nick
                     this._comms.ms = Date.now()
