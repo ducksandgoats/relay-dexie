@@ -96,24 +96,22 @@ export default class Base {
 
     async initUser(){
         const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.has(data)})
-
         for(const iden of idens){
-            if(this._users.has(iden)){
-                // add iden/user where clause
-                const s = await table.where('user').equals(iden).sortBy('stamp').last()
-                const e = await table.where('user').equals(iden).sortBy('edit').last()
-                if(this._sync){
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: s.stamp || 0, name: table.name, session: 'stamp'})})
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: e.edit || 0, name: table.name, session: 'edit'})})
-                } else {
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: s.stamp || 0, name: table.name, session: 'stamp'})})
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: e.edit || 0, name: table.name, session: 'edit'})})
+            for(const table of this.db.tables){
+                if(this.checkForOwnTables.includes(table.name)){
+                    continue
                 }
-            } else {
-                for(const table of this.db.tables){
-                    if(this.checkForOwnTables.includes(table.name)){
-                        continue
+                if(this._users.has(iden)){
+                    const s = await table.where('user').equals(iden).sortBy('stamp').last()
+                    const e = await table.where('user').equals(iden).sortBy('edit').last()
+                    if(this._sync){
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: s.stamp || 0, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: e.edit || 0, name: table.name, session: 'edit'})})
+                    } else {
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: s.stamp || 0, name: table.name, session: 'stamp'})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: e.edit || 0, name: table.name, session: 'edit'})})
                     }
+                } else {
                     if(this._sync){
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: true, num: null})})
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: true, num: null})})
@@ -121,8 +119,8 @@ export default class Base {
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: false, num: null})})
                         await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: false, num: null})})
                     }
+                    this._users.add(iden)
                 }
-                this._users.add(iden)
             }
         }
     }
