@@ -443,6 +443,13 @@ export default class Base {
         return crypto.randomUUID()
     }
 
+    changeSync(tof){
+        const useVar = Boolean(tof)
+        if(this._sync !== useVar){
+            this._sync = useVar
+        }
+    }
+
     changeTimer(sec){
         this._timer = sec || 180000
         this.turnOffInterval()
