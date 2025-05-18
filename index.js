@@ -88,7 +88,7 @@ export default class Base {
     }
 
     async initUser(){
-        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.has(data)})
+        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json())
         for(const iden of idens){
             for(const table of this.db.tables){
                 if(this.checkForOwnTables.includes(table.name)){
@@ -168,7 +168,7 @@ export default class Base {
                         }
                     } else {
                         if(datas.num){
-                            stamps = await dataTab.where('user').equals(this._user).filter((data) => {return data.stamp > useNum}).toArray()
+                            stamps = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.stamp > useNum).toArray()
                         } else {
                             stamps = await dataTab.where('user').equals(this._user).toArray()
                         }
@@ -237,7 +237,7 @@ export default class Base {
                         }
                     } else {
                         if(datas.num){
-                            edits = await dataTab.where('user').equals(this._user).filter((data) => {return data.edit > useNum}).toArray()
+                            edits = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.edit > useNum).toArray()
                         } else {
                             edits = await dataTab.where('user').equals(this._user).toArray()
                         }
