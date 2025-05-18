@@ -14,9 +14,9 @@ export default class Base {
             throw new Error('proto must be msg:, topic:, or pubsub:')
         }
 
-        opts.init = opts.init !== true ? false : true
+        opts.init = Boolean(opts.init)
 
-        opts.routine = opts.routine !== true ? false : true
+        opts.routine = Boolean(opts.routine)
 
         this._proto = opts.proto
 
@@ -32,19 +32,13 @@ export default class Base {
 
         this._id = opts.id
 
-        this._span = localStorage.getItem('save') ? Number(localStorage.getItem('save')) : null
-
         this._sync = Boolean(opts.sync)
 
-        this._force = opts.force === false ? opts.force : true
+        this._force = Boolean(opts.force)
     
-        this._keep = opts.keep === true ? opts.keep : false
+        this._keep = Boolean(opts.keep)
 
-        this._timer = typeof(opts.timer) === 'object' && !Array.isArray(opts.timer) ? opts.timer : {}
-        this._timer.redo = this._timer.redo || 60000
-        this._timer.save = this._timer.save || 60000
-        this._timer.init = this._timer.init || 15000
-        this._timer.timed = this._timer.timed || 30000
+        this._timer = opts.timer || 180000
     
         this._user = localStorage.getItem('user') || (() => {const test = crypto.randomUUID();localStorage.setItem('user', test);return test;})()
     
@@ -77,14 +71,13 @@ export default class Base {
         this.db.version(opts.version).stores({...opts.own, ...opts.schema})
 
         if(opts.routine){
-            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.redo)
+            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer)
         }
-        this._save = setInterval(() => {localStorage.setItem('save', `${Date.now()}`)}, this._timer.save)
 
         this._piecing = new Map()
 
         if(opts.init){
-            setTimeout(() => {this.initUser().then(console.log).catch(console.error)}, this._timer.init)
+            this.initUser().then(console.log).catch(console.error)
         }
 
         ;(async () => {
@@ -446,7 +439,29 @@ export default class Base {
         }
     }
 
-    id(){return crypto.randomUUID()}
+    id(){
+        return crypto.randomUUID()
+    }
+
+    changeTimer(sec){
+        this._timer = sec || 180000
+        this.turnOffInterval()
+        this.turnOnInterval()
+
+    }
+
+    turnOnInterval(){
+        if(!this._routine){
+            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer)
+        }
+    }
+
+    turnOffInterval(){
+        if(this._routine){
+            clearInterval(this._routine)
+            this._routine = null
+        }
+    }
 
     async ret(name, prop){
         const dataTab = this.db.table(name)
@@ -547,10 +562,7 @@ export default class Base {
     }
 
     quit(){
-        if(this._routine){
-            clearInterval(this._routine)
-        }
-        clearInterval(this._save)
+        this.turnOffInterval()
         this.db.close()
     }
 }
