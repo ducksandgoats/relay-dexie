@@ -30,13 +30,7 @@ export default class Base {
 
         this._users = new Set()
 
-        this._comms = {iden: null, ms: 0}
-
-        this._used = null
-
         this._id = opts.id
-
-        this._load = typeof(opts.load) === 'object' && !Array.isArray(opts.load) ? opts.load : {from: Date.now() - 86400000}
 
         this._span = localStorage.getItem('save') ? Number(localStorage.getItem('save')) : null
 
@@ -102,64 +96,33 @@ export default class Base {
 
     async initUser(){
         const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()).filter((data) => {return !this._users.has(data)})
-        if(this._comms.iden && this._comms.ms){
-            if(Date.now() - this._comms.ms < this._timer.timed){
-                return
-            } else {
-                this._used = this._comms.iden
-                this._comms.iden = null
-                this._comms.ms = 0
-            }
-        }
-        let check = true
-        while(check){
-            if(idens.length){
-                const i = Math.floor(Math.random() * idens.length)
-                const iden = idens[i]
-                if(this._used === iden){
-                    idens.splice(i, 1)
-                } else if(this._users.has(iden)){
-                    idens.splice(i, 1)
+
+        for(const iden of idens){
+            if(this._users.has(iden)){
+                // add iden/user where clause
+                const s = await table.where('user').equals(iden).sortBy('stamp').last()
+                const e = await table.where('user').equals(iden).sortBy('edit').last()
+                if(this._sync){
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: s.stamp || 0, name: table.name, session: 'stamp'})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: e.edit || 0, name: table.name, session: 'edit'})})
                 } else {
-                    // this._users.set(iden, Date.now())
-                    // this._comms.iden = iden
-                    // this._comms.ms = Date.now()
-                    idens.splice(i, 1)
-                    this._used = null
-
-                    for(const table of this.db.tables){
-                        if(this.checkForOwnTables.includes(table.name)){
-                            continue
-                        }
-                        if(this._sync === true){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp'})})
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit'})})
-                        } else if(this._sync === null){
-                            if(this._span){
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'stamp'})})
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({between: {from: this._span, to: Date.now()}, name: table.name, session: 'edit'})})
-                            } else {
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'stamp'})})
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({...this._load, name: table.name, session: 'edit'})})
-                            }
-                        } else if(this._sync === false){
-                            const s = await table.where('stamp').notEqual(0).last()
-                            const e = await table.where('edit').notEqual(0).last()
-                            if(s){
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: s.stamp - 300000, name: table.name, session: 'stamp'})})
-                            }
-                            if(e){
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({from: e.edit - 300000, name: table.name, session: 'edit'})})
-                            }
-                        } else {
-                            continue
-                        }
-                    }
-
-                    check = false
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: s.stamp || 0, name: table.name, session: 'stamp'})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: e.edit || 0, name: table.name, session: 'edit'})})
                 }
             } else {
-                check = false
+                for(const table of this.db.tables){
+                    if(this.checkForOwnTables.includes(table.name)){
+                        continue
+                    }
+                    if(this._sync){
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: true, num: null})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: true, num: null})})
+                    } else {
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: false, num: null})})
+                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: false, num: null})})
+                    }
+                }
+                this._users.add(iden)
             }
         }
     }
@@ -205,23 +168,24 @@ export default class Base {
                         console.log('run stamp')
                     }
                     let stamps
-                    if(datas.between){
-                        if(!datas.includes){
-                            datas.includes = {from: true, to: true}
+                    const useNum = datas.num ? datas.num - 1 : 0
+                    if(datas. sync){
+                        if(datas.num){
+                            stamps = await dataTab.where('stamp').above(useNum).toArray()
+                        } else {
+                            stamps = await dataTab.where('stamp').notEqual(0).toArray()
                         }
-                        stamps = await dataTab.where('stamp').between(datas.between.from, datas.between.to, datas.includes.from, datas.includes.to).toArray()
-                    } else if(datas.from){
-                        stamps = await dataTab.where('stamp').above(datas.from).toArray()
-                    } else if(datas.to){
-                        stamps = await dataTab.where('stamp').below(datas.to).toArray()
                     } else {
-                        stamps = await dataTab.where('stamp').notEqual(0).toArray()
+                        if(datas.num){
+                            stamps = await dataTab.where('user').equals(this._user).filter((data) => {return data.stamp > useNum}).toArray()
+                        } else {
+                            stamps = await dataTab.where('user').equals(this._user).toArray()
+                        }
                     }
                     if(this._debug){
                         console.log('run stamps', stamps)
                     }
                     const count = datas.count || 15
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     while(stamps.length){
                         datas.session = 'stamps'
                         datas.stamps = stamps.splice(stamps.length - count, count)
@@ -240,11 +204,7 @@ export default class Base {
                             }
                         }
                     }
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
                 } else if(datas.session === 'stamps'){
-                    this._comms.iden = nick
-                    this._comms.ms = Date.now()
-                    // this._users.set(nick, Date.now())
                     if(this._debug){
                         console.log('see stamps', datas.stamps)
                     }
@@ -277,23 +237,24 @@ export default class Base {
                         console.log('run edit')
                     }
                     let edits
-                    if(datas.between){
-                        if(!datas.includes){
-                            datas.includes = {from: true, to: true}
+                    const useNum = datas.num ? datas.num - 1 : 0
+                    if(datas. sync){
+                        if(datas.num){
+                            edits = await dataTab.where('edit').above(useNum).toArray()
+                        } else {
+                            edits = await dataTab.where('edit').notEqual(0).toArray()
                         }
-                        edits = await dataTab.where('edit').between(datas.between.from, datas.between.to, datas.includes.from, datas.includes.to).toArray()
-                    } else if(datas.from){
-                        edits = await dataTab.where('edit').above(datas.from).toArray()
-                    } else if(datas.to){
-                        edits = await dataTab.where('edit').below(datas.to).toArray()
                     } else {
-                        edits = await dataTab.where('edit').notEqual(0).toArray()
+                        if(datas.num){
+                            edits = await dataTab.where('user').equals(this._user).filter((data) => {return data.edit > useNum}).toArray()
+                        } else {
+                            edits = await dataTab.where('user').equals(this._user).toArray()
+                        }
                     }
                     if(this._debug){
                         console.log('run edits', edits)
                     }
                     const count = datas.count || 15
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     while(edits.length){
                         if(this._debug){
                             console.log('split edit', edits.length)
@@ -315,11 +276,7 @@ export default class Base {
                             }
                         }
                     }
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
                 } else if(datas.session === 'edits'){
-                    this._comms.iden = nick
-                    this._comms.ms = Date.now()
-                    // this._users.set(nick, Date.now())
                     if(this._debug){
                         console.log('see edits', datas.edits)
                     }
@@ -347,13 +304,6 @@ export default class Base {
                             }
                         }
                     }
-                } else if(datas.session === 'start'){
-                    this._comms.iden = nick
-                    this._comms.ms = Date.now()
-                } else if(datas.session === 'stop'){
-                    this._comms.iden = null
-                    this._comms.ms = 0
-                    this._users.add(nick)
                 } else {
                     return
                 }
