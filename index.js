@@ -443,6 +443,17 @@ export default class Base {
         return crypto.randomUUID()
     }
 
+    async checkIdens(){
+        return (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json())
+    }
+
+    async fullSync(iden){
+        for(const table of this.db.tables){
+            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: true, num: null})})
+            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: true, num: null})})
+        }
+    }
+
     changeSync(tof){
         const useVar = Boolean(tof)
         if(this._sync !== useVar){
