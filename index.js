@@ -1,6 +1,6 @@
 import {Dexie} from 'dexie'
 import {arr2text} from 'uint8-util'
-import "dexie-export-import"
+// import "dexie-export-import"
 
 export default class Base {
     constructor(opts){
