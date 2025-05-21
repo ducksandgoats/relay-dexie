@@ -30,13 +30,11 @@ export default class Base {
 
         this._users = new Set()
 
+        this._prog = new Set()
+
         this._id = opts.id
 
         this._sync = Boolean(opts.sync)
-
-        this._force = Boolean(opts.force)
-    
-        this._keep = Boolean(opts.keep)
 
         this._timer = opts.timer || 180000
     
@@ -95,23 +93,10 @@ export default class Base {
                     continue
                 }
                 if(this._users.has(iden)){
-                    const s = await table.where('user').equals(iden).sortBy('stamp').last()
-                    const e = await table.where('user').equals(iden).sortBy('edit').last()
-                    if(this._sync){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: s.stamp || 0, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: true, num: e.edit || 0, name: table.name, session: 'edit'})})
-                    } else {
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: s.stamp || 0, name: table.name, session: 'stamp'})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: false, num: e.edit || 0, name: table.name, session: 'edit'})})
-                    }
+                    const s = (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: this._sync, records: s || 0, name: table.name, session: 'sync'})})
                 } else {
-                    if(this._sync){
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: true, num: null})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: true, num: null})})
-                    } else {
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: false, num: null})})
-                        await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: false, num: null})})
-                    }
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', records: null, sync: this._sync})})
                     this._users.add(iden)
                 }
             }
@@ -144,9 +129,7 @@ export default class Base {
                 } else if(datas.status === 'edit'){
                     await dataTab.update(datas.iden, datas.data)
                 } else if(datas.status === 'sub'){
-                    if(!this._keep){
-                        await dataTab.delete(datas.iden)
-                    }
+                    await dataTab.delete(datas.iden)
                 } else {
                     return
                 }
@@ -154,33 +137,32 @@ export default class Base {
                 if(this._debug){
                     console.log('run session')
                 }
-                if(datas.session === 'stamp'){
+                if(datas.session === 'sync'){
                     if(this._debug){
-                        console.log('run stamp')
+                        console.log('run sync')
                     }
-                    let stamps
-                    const useNum = datas.num ? datas.num - 1 : 0
-                    if(datas. sync){
-                        if(datas.num){
-                            stamps = await dataTab.where('stamp').above(useNum).toArray()
+
+                    let records
+                    const useRecords = datas.records ? datas.records - 1 : 0
+                    if(datas.sync){
+                        if(useRecords){
+                            records = await dataTab.where('stamp').above(useRecords).toArray()
                         } else {
-                            stamps = await dataTab.where('stamp').notEqual(0).toArray()
+                            records = await dataTab.where('stamp').notEqual(0).toArray()
                         }
                     } else {
-                        if(datas.num){
-                            stamps = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.stamp > useNum).toArray()
+                        if(useRecords){
+                            records = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.stamp > useRecords).toArray()
                         } else {
-                            stamps = await dataTab.where('user').equals(this._user).toArray()
+                            records = await dataTab.where('user').equals(this._user).toArray()
                         }
                     }
-                    if(this._debug){
-                        console.log('run stamps', stamps)
-                    }
+
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     const count = datas.count || 15
-                    while(stamps.length){
-                        datas.session = 'stamps'
-                        datas.stamps = stamps.splice(stamps.length - count, count)
-                        datas.edits = null
+                    while(records.length){
+                        datas.session = 'records'
+                        datas.records = records.splice(records.length - count, count)
                         const test = JSON.stringify(datas)
                         if(test.length < 16000){
                             await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
@@ -190,30 +172,28 @@ export default class Base {
                             let used = 0
                             for(let i = 1;i < (pieces + 1);i++){
                                 const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'stamps', pieces, piece: i, iden: useID, stamps: test.slice(used, slicing)})})
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
                                 used = slicing
                             }
                         }
                     }
-                } else if(datas.session === 'stamps'){
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
+                } else if(datas.session === 'records'){
                     if(this._debug){
-                        console.log('see stamps', datas.stamps)
+                        console.log('see records', datas.records)
                     }
-                    if(!datas.stamps.length){
-                        return
-                    }
-                    for(const data of datas.stamps){
+                    for(const useRecord of datas.records){
                         try {
-                            await dataTab.add(data)
+                            await dataTab.add(useRecord)
                         } catch (err) {
                             if(this._debug){
                                 console.error(err)
                             }
                             try {
-                                const got = await dataTab.get(data.iden)
-                                if(got){
-                                    if(got.edit < data.edit){
-                                        await dataTab.put(data)
+                                const gotRecord = await dataTab.get(useRecord.iden)
+                                if(gotRecord){
+                                    if(gotRecord.edit < useRecord.edit){
+                                        await dataTab.put(useRecord)
                                     }
                                 }
                             } catch (error) {
@@ -223,77 +203,13 @@ export default class Base {
                             }
                         }
                     }
-                } else if(datas.session === 'edit'){
-                    if(this._debug){
-                        console.log('run edit')
+                } else if(datas.session === 'start'){
+                    if(!this._prog.has(nick)){
+                        this._prog.add(nick)
                     }
-                    let edits
-                    const useNum = datas.num ? datas.num - 1 : 0
-                    if(datas. sync){
-                        if(datas.num){
-                            edits = await dataTab.where('edit').above(useNum).toArray()
-                        } else {
-                            edits = await dataTab.where('edit').notEqual(0).toArray()
-                        }
-                    } else {
-                        if(datas.num){
-                            edits = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.edit > useNum).toArray()
-                        } else {
-                            edits = await dataTab.where('user').equals(this._user).toArray()
-                        }
-                    }
-                    if(this._debug){
-                        console.log('run edits', edits)
-                    }
-                    const count = datas.count || 15
-                    while(edits.length){
-                        if(this._debug){
-                            console.log('split edit', edits.length)
-                        }
-                        datas.session = 'edits'
-                        datas.stamps = null
-                        datas.edits = edits.splice(edits.length - count, count)
-                        const test = JSON.stringify(datas)
-                        if(test.length < 16000){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
-                        } else {
-                            const useID = crypto.randomUUID()
-                            const pieces = Math.ceil(test.length / 15000)
-                            let used = 0
-                            for(let i = 1;i < (pieces + 1);i++){
-                                const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'edits', pieces, piece: i, iden: useID, edits: test.slice(used, slicing)})})
-                                used = slicing
-                            }
-                        }
-                    }
-                } else if(datas.session === 'edits'){
-                    if(this._debug){
-                        console.log('see edits', datas.edits)
-                    }
-                    if(!datas.edits.length){
-                        return
-                    }
-                    for(const data of datas.edits){
-                        try {
-                            await dataTab.add(data)
-                        } catch (err) {
-                            if(this._debug){
-                                console.error(err)
-                            }
-                            try {
-                                const got = await dataTab.get(data.iden)
-                                if(got){
-                                    if(got.edit < data.edit){
-                                        await dataTab.put(data)
-                                    }
-                                }
-                            } catch (error) {
-                                if(this._debug){
-                                    console.error(error)
-                                }
-                            }
-                        }
+                } else if(datas.session === 'stop'){
+                    if(this._prog.has(nick)){
+                        this._prog.delete(nick)
                     }
                 } else {
                     return
@@ -339,7 +255,7 @@ export default class Base {
                             obj.stamp = Date.now()
                         }
                     }
-                } else if(datas.piecing === 'stamps'){
+                } else if(datas.piecing === 'records'){
                     if(this._piecing.has(datas.iden)){
                         const obj = this._piecing.get(datas.iden)
                         if(!obj.arr[datas.piece - 1]){
@@ -347,53 +263,10 @@ export default class Base {
                             obj.stamp = Date.now()
                             if(obj.arr.every(Boolean)){
                                 const useData = JSON.parse(obj.arr.join(''))
-                                if(!useData.stamps.length){
+                                if(!useData.records.length){
                                     return
                                 }
-                                for(const data of useData.stamps){
-                                    try {
-                                        await dataTab.add(data)
-                                    } catch (err) {
-                                        if(this._debug){
-                                            console.error(err)
-                                        }
-                                        try {
-                                            const got = await dataTab.get(data.iden)
-                                            if(got){
-                                                if(got.edit < data.edit){
-                                                    await dataTab.put(data)
-                                                }
-                                            }
-                                        } catch (error) {
-                                            if(this._debug){
-                                                console.error(error)
-                                            }
-                                        }
-                                    }
-                                }
-                                this._piecing.delete(datas.iden)
-                            }
-                        }
-                    } else {
-                        const obj = {stamp: Date.now(), arr: new Array(datas.pieces).fill(null)}
-                        this._piecing.set(datas.iden, obj)
-                        if(!obj.arr[datas.piece - 1]){
-                            obj.arr[datas.piece - 1] = datas.data
-                            obj.stamp = Date.now()
-                        }
-                    }
-                } else if(datas.piecing === 'edits'){
-                    if(this._piecing.has(datas.iden)){
-                        const obj = this._piecing.get(datas.iden)
-                        if(!obj.arr[datas.piece - 1]){
-                            obj.arr[datas.piece - 1] = datas.data
-                            obj.stamp = Date.now()
-                            if(obj.arr.every(Boolean)){
-                                const useData = JSON.parse(obj.arr.join(''))
-                                if(!useData.edits.length){
-                                    return
-                                }
-                                for(const data of useData.edits){
+                                for(const data of useData.records){
                                     try {
                                         await dataTab.add(data)
                                     } catch (err) {
@@ -443,14 +316,29 @@ export default class Base {
         return crypto.randomUUID()
     }
 
-    async checkIdens(){
-        return (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json())
+    async doIden(data){
+        const arr = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
+        if(Boolean(data)){
+            return arr[Math.floor(Math.random() * arr.length)]
+        } else {
+            return arr
+        }
     }
 
-    async fullSync(iden){
-        for(const table of this.db.tables){
-            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'stamp', sync: true, num: null})})
-            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'edit', sync: true, num: null})})
+    async doSync(idToUse, dbOrUser, recentStamp = null){
+        const dbOrUserToUse = Boolean(dbOrUser)
+        const useRecords = recentStamp ? (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp : null
+        if(idToUse){
+            for(const table of this.db.tables){
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0})})
+            }
+        } else {
+            const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
+            for(const iden of idens){
+                for(const table of this.db.tables){
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0})})
+                }
+            }
         }
     }
 
@@ -465,7 +353,6 @@ export default class Base {
         this._timer = sec || 180000
         this.turnOffInterval()
         this.turnOnInterval()
-
     }
 
     turnOnInterval(){
@@ -538,21 +425,11 @@ export default class Base {
         if(!test){
             throw new Error('did not find data')
         }
-        if(this._force){
-            await dataTab.delete(test.iden)
-            if(test.user === this._user){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
-            }
-            return test.iden
-        } else {
-            if(test.user === this._user){
-                await dataTab.delete(test.iden)
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
-                return test.iden
-            } else {
-                throw new Error('user does not match')
-            }
+        await dataTab.delete(test.iden)
+        if(test.user === this._user){
+            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name, iden: test.iden, user: test.user, status: 'sub'})})
         }
+        return test.iden
     }
 
     async clear(name){
