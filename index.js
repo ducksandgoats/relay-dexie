@@ -18,6 +18,8 @@ export default class Base {
 
         opts.routine = Boolean(opts.routine)
 
+        this._count = opts.count || 15
+
         this._proto = opts.proto
 
         this._ben = this._proto === 'msg:' ? opts.ben && ['str', 'json', 'buf'].includes(opts.ben) ? opts.ben : undefined : undefined
@@ -94,9 +96,9 @@ export default class Base {
                 }
                 if(this._users.has(iden)){
                     const s = (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: this._sync, records: s || 0, name: table.name, session: 'sync'})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: this._sync, records: s || 0, name: table.name, session: 'sync', count: this._count})})
                 } else {
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', records: null, sync: this._sync})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', records: null, sync: this._sync, count: this._count})})
                     this._users.add(iden)
                 }
             }
@@ -325,18 +327,18 @@ export default class Base {
         }
     }
 
-    async doSync(idToUse, dbOrUser, recentStamp = null){
+    async doSync(idToUse, dbOrUser, recentStamp = null, count = 15){
         const dbOrUserToUse = Boolean(dbOrUser)
         const useRecords = recentStamp ? (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp : null
         if(idToUse){
             for(const table of this.db.tables){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0, count})})
             }
         } else {
             const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
             for(const iden of idens){
                 for(const table of this.db.tables){
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0, count})})
                 }
             }
         }
