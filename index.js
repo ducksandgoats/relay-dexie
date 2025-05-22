@@ -88,7 +88,7 @@ export default class Base {
     }
 
     async initUser(){
-        const idens = (await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json())
+        const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
         for(const iden of idens){
             for(const table of this.db.tables){
                 if(this.checkForOwnTables.includes(table.name)){
