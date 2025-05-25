@@ -32,8 +32,6 @@ export default class Base {
 
         this._users = new Set()
 
-        this._prog = new Set()
-
         this._id = opts.id
 
         this._sync = Boolean(opts.sync)
@@ -94,13 +92,7 @@ export default class Base {
                 if(this.checkForOwnTables.includes(table.name)){
                     continue
                 }
-                if(this._users.has(iden)){
-                    const s = (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({sync: this._sync, records: s || 0, name: table.name, session: 'sync', count: this._count})})
-                } else {
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', records: null, sync: this._sync, count: this._count})})
-                    this._users.add(iden)
-                }
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: this._sync, count: this._count})})
             }
         }
     }
@@ -139,28 +131,31 @@ export default class Base {
                 if(this._debug){
                     console.log('run session')
                 }
-                if(datas.session === 'sync'){
+                if(datas.session === 'search'){
                     if(this._debug){
-                        console.log('run sync')
+                        console.log('run search')
                     }
 
-                    let records
-                    const useRecords = datas.records ? datas.records - 1 : 0
-                    if(datas.sync){
-                        if(useRecords){
-                            records = await dataTab.where('stamp').above(useRecords).toArray()
-                        } else {
-                            records = await dataTab.where('stamp').notEqual(0).toArray()
-                        }
-                    } else {
-                        if(useRecords){
-                            records = await dataTab.where('user').equals(this._user).filter((blurb) => blurb.stamp > useRecords).toArray()
-                        } else {
-                            records = await dataTab.where('user').equals(this._user).toArray()
-                        }
+                    let records = []
+                    if(datas.search.iden){
+                        records = [...records, ...(await dataTab.where('iden').equals(datas.search.iden).toArray())]
+                    }
+                    if(datas.search.user){
+                        records = [...records, ...(await dataTab.where('user').equals(datas.search.user).toArray())]
+                    }
+                    if(datas.search.stamp){
+                        records = [...records, ...(await dataTab.where('stamp').equals(datas.search.stamp).toArray())]
+                    }
+                    if(datas.search.from){
+                        records = [...records, ...(await dataTab.where('stamp').aboveOrEqual(datas.search.from).toArray())]
+                    }
+                    if(datas.search.to){
+                        records = [...records, ...(await dataTab.where('stamp').belowOrEqual(datas.search.to).toArray())]
+                    }
+                    if(datas.search.between){
+                        records = [...records, ...(await dataTab.where('stamp').between(datas.search.between.from, datas.search.between.to, true, true).toArray())]
                     }
 
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'start'})})
                     const count = datas.count || 15
                     while(records.length){
                         datas.session = 'records'
@@ -179,7 +174,36 @@ export default class Base {
                             }
                         }
                     }
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({session: 'stop'})})
+                } else if(datas.session === 'sync'){
+                    if(this._debug){
+                        console.log('run sync')
+                    }
+
+                    let records
+                    if(datas.sync){
+                        records = await dataTab.where('stamp').notEqual(0).toArray()
+                    } else {
+                        records = await dataTab.where('user').equals(this._user).toArray()
+                    }
+
+                    const count = datas.count || 15
+                    while(records.length){
+                        datas.session = 'records'
+                        datas.records = records.splice(records.length - count, count)
+                        const test = JSON.stringify(datas)
+                        if(test.length < 16000){
+                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
+                        } else {
+                            const useID = crypto.randomUUID()
+                            const pieces = Math.ceil(test.length / 15000)
+                            let used = 0
+                            for(let i = 1;i < (pieces + 1);i++){
+                                const slicing = i * 15000
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
+                                used = slicing
+                            }
+                        }
+                    }
                 } else if(datas.session === 'records'){
                     if(this._debug){
                         console.log('see records', datas.records)
@@ -204,14 +228,6 @@ export default class Base {
                                 }
                             }
                         }
-                    }
-                } else if(datas.session === 'start'){
-                    if(!this._prog.has(nick)){
-                        this._prog.add(nick)
-                    }
-                } else if(datas.session === 'stop'){
-                    if(this._prog.has(nick)){
-                        this._prog.delete(nick)
                     }
                 } else {
                     return
@@ -318,6 +334,21 @@ export default class Base {
         return crypto.randomUUID()
     }
 
+    async doSearch(idToUse, search = {}, count = 15){
+        if(idToUse){
+            for(const table of this.db.tables){
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'search', search, count})})
+            }
+        } else {
+            const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
+            for(const iden of idens){
+                for(const table of this.db.tables){
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'search', search, count})})
+                }
+            }
+        }
+    }
+
     async doIden(data){
         const arr = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
         if(Boolean(data)){
@@ -329,16 +360,15 @@ export default class Base {
 
     async doSync(idToUse, dbOrUser, recentStamp = null, count = 15){
         const dbOrUserToUse = Boolean(dbOrUser)
-        const useRecords = recentStamp ? (await table.where('user').equals(this._user).sortBy('stamp').last())?.stamp : null
         if(idToUse){
             for(const table of this.db.tables){
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0, count})})
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, count})})
             }
         } else {
             const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
             for(const iden of idens){
                 for(const table of this.db.tables){
-                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, records: useRecords || 0, count})})
+                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, count})})
                 }
             }
         }
