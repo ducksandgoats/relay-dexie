@@ -30,7 +30,9 @@ export default class Base {
             throw new Error('must have id')
         }
 
-        this._users = new Set()
+        this._syncing = new Set()
+
+        this._searching = new Set()
 
         this._id = opts.id
 
@@ -120,77 +122,101 @@ export default class Base {
                     console.log('run session')
                 }
                 if(datas.session === 'search'){
-                    if(this._debug){
-                        console.log('run search')
-                    }
+                    try {
+                        if(this._debug){
+                            console.log('run search')
+                        }
 
-                    let records = []
-                    if(datas.search.iden){
-                        records = [...records, ...(await dataTab.where('iden').equals(datas.search.iden).toArray())]
-                    }
-                    if(datas.search.user){
-                        records = [...records, ...(await dataTab.where('user').equals(datas.search.user).toArray())]
-                    }
-                    if(datas.search.stamp){
-                        records = [...records, ...(await dataTab.where('stamp').equals(datas.search.stamp).toArray())]
-                    }
-                    if(datas.search.from){
-                        records = [...records, ...(await dataTab.where('stamp').aboveOrEqual(datas.search.from).toArray())]
-                    }
-                    if(datas.search.to){
-                        records = [...records, ...(await dataTab.where('stamp').belowOrEqual(datas.search.to).toArray())]
-                    }
-                    if(datas.search.between){
-                        records = [...records, ...(await dataTab.where('stamp').between(datas.search.between.from, datas.search.between.to, true, true).toArray())]
-                    }
-
-                    const count = datas.count || 15
-                    while(records.length){
-                        datas.session = 'records'
-                        datas.records = records.splice(records.length - count, count)
-                        const test = JSON.stringify(datas)
-                        if(test.length < 16000){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
+                        if(this._searching.has(nick)){
+                            return
                         } else {
-                            const useID = crypto.randomUUID()
-                            const pieces = Math.ceil(test.length / 15000)
-                            let used = 0
-                            for(let i = 1;i < (pieces + 1);i++){
-                                const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
-                                used = slicing
+                            this._searching.add(nick)
+                        }
+    
+                        let records = []
+                        if(datas.search.iden){
+                            records = [...records, ...(await dataTab.where('iden').equals(datas.search.iden).toArray())]
+                        }
+                        if(datas.search.user){
+                            records = [...records, ...(await dataTab.where('user').equals(datas.search.user).toArray())]
+                        }
+                        if(datas.search.stamp){
+                            records = [...records, ...(await dataTab.where('stamp').equals(datas.search.stamp).toArray())]
+                        }
+                        if(datas.search.from){
+                            records = [...records, ...(await dataTab.where('stamp').aboveOrEqual(datas.search.from).toArray())]
+                        }
+                        if(datas.search.to){
+                            records = [...records, ...(await dataTab.where('stamp').belowOrEqual(datas.search.to).toArray())]
+                        }
+                        if(datas.search.between){
+                            records = [...records, ...(await dataTab.where('stamp').between(datas.search.between.from, datas.search.between.to, true, true).toArray())]
+                        }
+    
+                        const count = datas.count || 15
+                        while(records.length){
+                            datas.session = 'records'
+                            datas.records = records.splice(records.length - count, count)
+                            const test = JSON.stringify(datas)
+                            if(test.length < 16000){
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
+                            } else {
+                                const useID = crypto.randomUUID()
+                                const pieces = Math.ceil(test.length / 15000)
+                                let used = 0
+                                for(let i = 1;i < (pieces + 1);i++){
+                                    const slicing = i * 15000
+                                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
+                                    used = slicing
+                                }
                             }
                         }
+                        this._searching.delete(nick)
+                    } catch (error) {
+                        this._searching.delete(nick)
+                        throw error
                     }
                 } else if(datas.session === 'sync'){
-                    if(this._debug){
-                        console.log('run sync')
-                    }
+                    try {
+                        if(this._debug){
+                            console.log('run sync')
+                        }
 
-                    let records
-                    if(datas.sync){
-                        records = await dataTab.where('stamp').notEqual(0).toArray()
-                    } else {
-                        records = await dataTab.where('user').equals(this._user).toArray()
-                    }
-
-                    const count = datas.count || 15
-                    while(records.length){
-                        datas.session = 'records'
-                        datas.records = records.splice(records.length - count, count)
-                        const test = JSON.stringify(datas)
-                        if(test.length < 16000){
-                            await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
+                        if(this._syncing.has(nick)){
+                            return
                         } else {
-                            const useID = crypto.randomUUID()
-                            const pieces = Math.ceil(test.length / 15000)
-                            let used = 0
-                            for(let i = 1;i < (pieces + 1);i++){
-                                const slicing = i * 15000
-                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
-                                used = slicing
+                            this._syncing.add(nick)
+                        }
+    
+                        let records
+                        if(datas.sync){
+                            records = await dataTab.where('stamp').notEqual(0).toArray()
+                        } else {
+                            records = await dataTab.where('user').equals(this._user).toArray()
+                        }
+    
+                        const count = datas.count || 15
+                        while(records.length){
+                            datas.session = 'records'
+                            datas.records = records.splice(records.length - count, count)
+                            const test = JSON.stringify(datas)
+                            if(test.length < 16000){
+                                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: test})
+                            } else {
+                                const useID = crypto.randomUUID()
+                                const pieces = Math.ceil(test.length / 15000)
+                                let used = 0
+                                for(let i = 1;i < (pieces + 1);i++){
+                                    const slicing = i * 15000
+                                    await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': nick, ...this._objHeader}, body: JSON.stringify({name: datas.name, piecing: 'records', pieces, piece: i, iden: useID, records: test.slice(used, slicing)})})
+                                    used = slicing
+                                }
                             }
                         }
+                        this._syncing.delete(nick)
+                    } catch (error) {
+                        this._syncing.delete(nick)
+                        throw error
                     }
                 } else if(datas.session === 'records'){
                     if(this._debug){
