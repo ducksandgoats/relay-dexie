@@ -349,7 +349,7 @@ export default class Base {
         }
     }
 
-    async doIden(data){
+    async doIden(data = null){
         const arr = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
         if(Boolean(data)){
             return arr[Math.floor(Math.random() * arr.length)]
@@ -358,7 +358,7 @@ export default class Base {
         }
     }
 
-    async doSync(idToUse, dbOrUser, recentStamp = null, count = 15){
+    async doSync(idToUse, dbOrUser, count = 15){
         const dbOrUserToUse = Boolean(dbOrUser)
         if(idToUse){
             for(const table of this.db.tables){
