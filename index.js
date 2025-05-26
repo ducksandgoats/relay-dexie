@@ -394,6 +394,9 @@ export default class Base {
         if(arr.includes('sync')){
             this._sync = opts.sync
         }
+        if(arr.includes('count')){
+            this._count = opts.count
+        }
     }
 
     turnOnInterval(){
