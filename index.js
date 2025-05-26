@@ -36,7 +36,7 @@ export default class Base {
 
         this._sync = Boolean(opts.sync)
 
-        this._timer = opts.timer || 180000
+        this._timer = (opts.timer || 30) * 60000
     
         this._user = localStorage.getItem('user') || (() => {const test = crypto.randomUUID();localStorage.setItem('user', test);return test;})()
     
@@ -389,7 +389,7 @@ export default class Base {
     changeOpts(opts = {}){
         const arr = Object.keys(opts)
         if(arr.includes('timer')){
-            this._timer = opts.timer
+            this._timer = opts.timer * 60000
         }
         if(arr.includes('sync')){
             this._sync = opts.sync
