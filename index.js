@@ -69,13 +69,13 @@ export default class Base {
         this.db.version(opts.version).stores({...opts.own, ...opts.schema})
 
         if(opts.routine){
-            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer)
+            this._routine = setInterval(() => {this.syncUser().then(console.log).catch(console.error)}, this._timer)
         }
 
         this._piecing = new Map()
 
         if(opts.init){
-            this.initUser().then(console.log).catch(console.error)
+            this.syncUser().then(console.log).catch(console.error)
         }
 
         ;(async () => {
@@ -83,18 +83,6 @@ export default class Base {
                 await this.handler(i)
             }
         })().then((data) => {console.log(data)}).catch((err) => {console.error(err.name, err.message, err.stack)});
-    }
-
-    async initUser(){
-        const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
-        for(const iden of idens){
-            for(const table of this.db.tables){
-                if(this.checkForOwnTables.includes(table.name)){
-                    continue
-                }
-                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: this._sync, count: this._count})})
-            }
-        }
     }
 
     async handler(data){
@@ -334,15 +322,33 @@ export default class Base {
         return crypto.randomUUID()
     }
 
+    async syncUser(){
+        const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
+        for(const iden of idens){
+            for(const table of this.db.tables){
+                if(this.checkForOwnTables.includes(table.name)){
+                    continue
+                }
+                await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: this._sync, count: this._count})})
+            }
+        }
+    }
+
     async doSearch(idToUse, search = {}, count = 15){
         if(idToUse){
             for(const table of this.db.tables){
+                if(this.checkForOwnTables.includes(table.name)){
+                    continue
+                }
                 await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'search', search, count})})
             }
         } else {
             const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
             for(const iden of idens){
                 for(const table of this.db.tables){
+                    if(this.checkForOwnTables.includes(table.name)){
+                        continue
+                    }
                     await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'search', search, count})})
                 }
             }
@@ -362,34 +368,37 @@ export default class Base {
         const dbOrUserToUse = Boolean(dbOrUser)
         if(idToUse){
             for(const table of this.db.tables){
+                if(this.checkForOwnTables.includes(table.name)){
+                    continue
+                }
                 await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': idToUse, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, count})})
             }
         } else {
             const idens = await (await fetch(`${this._proto}//${this._id}`, {method: 'GET', headers: {'X-Iden': 'true', 'X-Buf': 'false'}})).json()
             for(const iden of idens){
                 for(const table of this.db.tables){
+                    if(this.checkForOwnTables.includes(table.name)){
+                        continue
+                    }
                     await fetch(`${this._proto}//${this._id}/`, {method: 'POST', headers: {'X-Iden': iden, ...this._objHeader}, body: JSON.stringify({name: table.name, session: 'sync', sync: dbOrUserToUse, count})})
                 }
             }
         }
     }
 
-    changeSync(tof){
-        const useVar = Boolean(tof)
-        if(this._sync !== useVar){
-            this._sync = useVar
+    changeOpts(opts = {}){
+        const arr = Object.keys(opts)
+        if(arr.includes('timer')){
+            this._timer = opts.timer
         }
-    }
-
-    changeTimer(sec){
-        this._timer = sec || 180000
-        this.turnOffInterval()
-        this.turnOnInterval()
+        if(arr.includes('sync')){
+            this._sync = opts.sync
+        }
     }
 
     turnOnInterval(){
         if(!this._routine){
-            this._routine = setInterval(() => {this.initUser().then(console.log).catch(console.error)}, this._timer)
+            this._routine = setInterval(() => {this.syncUser().then(console.log).catch(console.error)}, this._timer)
         }
     }
 
